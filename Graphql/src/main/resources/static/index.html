@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>GraphQL Product Management</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
+            background-color: #f4f4f4; 
+        }
+        h1 { 
+            color: #333; 
+            text-align: center; 
+        }
+        h2 { 
+            margin-top: 20px; 
+            color: #555; 
+        }
+        .section { 
+            background: white; 
+            padding: 15px; 
+            margin-bottom: 20px; 
+            border-radius: 5px; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1); 
+        }
+        input, button { 
+            margin: 5px; 
+            padding: 8px; 
+            border-radius: 3px; 
+            border: 1px solid #ccc; 
+        }
+        button { 
+            background-color: #28a745; 
+            color: white; 
+            border: none; 
+            cursor: pointer; 
+        }
+        button:hover { 
+            background-color: #218838; 
+        }
+        button.delete { 
+            background-color: #dc3545; 
+        }
+        button.delete:hover { 
+            background-color: #c82333; 
+        }
+        ul { 
+            list-style-type: none; 
+            padding: 0; 
+        }
+        li { 
+            padding: 10px; 
+            border-bottom: 1px solid #eee; 
+        }
+        .error { 
+            color: red; 
+            font-size: 0.9em; 
+        }
+    </style>
+    <script>
+        async function sendGraphQLRequest(query, variables = {}) {
+            try {
+                const response = await fetch('/graphql', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query, variables })
+                });
+                const result = await response.json();
+                if (result.errors) {
+                    console.error(result.errors);
+                    document.getElementById('errorMessage').textContent = 'Error: ' + result.errors[0].message;
+                    return null;
+                }
+                document.getElementById('errorMessage').textContent = '';
+                return result.data;
+            } catch (error) {
+                console.error(error);
+                document.getElementById('errorMessage').textContent = 'Network error: ' + error.message;
+                return null;
+            }
+        }
+
+        async function displayAllProductsSorted() {
+            const query = `
+                query {
+                    allProductsSortedByPrice {
+                        id
+                        title
+                        price
+                        quantity
+                        desc
+                        user { id fullname }
+                        categories { id name }
+                    }
+                }
+            `;
+            const data = await sendGraphQLRequest(query);
+            if (data) {
+                renderResults(data.allProductsSortedByPrice, 'productsList');
+                document.getElementById('resultTitle').textContent = 'All Products (Sorted by Price: Low to High)';
+            }
+        }
+
+        async function displayProductsByCategory() {
+            const categoryId = document.getElementById('categoryId').value;
+            if (!categoryId) {
+                document.getElementById('errorMessage').textContent = 'Please enter a Category ID';
+                return;
+            }
+            const query = `
+                query($categoryId: ID!) {
+                    productsByCategory(categoryId: $categoryId) {
+                        id
+                        title
+                        price
+                        quantity
+                        desc
+                        user { id fullname }
+                        categories { id name }
+                    }
+                }
+            `;
+            const data = await sendGraphQLRequest(query, { categoryId });
+            if (data) {
+                renderResults(data.productsByCategory, 'productsList');
+                document.getElementById('resultTitle').textContent = `Products in Category ${categoryId}`;
+            }
+        }
+
+        async function createUser() {
+            const input = {
+                fullname: document.getElementById('userFullname').value,
+                email: document.getElementById('userEmail').value,
+                password: document.getElementById('userPassword').value,
+                phone: document.getElementById('userPhone').value
+            };
+            if (!input.fullname || !input.email || !input.password || !input.phone) {
+                document.getElementById('errorMessage').textContent = 'Please fill all user fields';
+                return;
+            }
+            const query = `
+                mutation($input: UserInput!) {
+                    createUser(input: $input) {
+                        id
+                        fullname
+                    }
+                }
+            `;
+            const data = await sendGraphQLRequest(query, { input });
+            if (data) {
+                alert(`User created: ${data.createUser.fullname}`);
+                document.getElementById('userForm').reset();
+            }
+        }
+
+        async function updateUser() {
+            const id = document.getElementById('userId').value;
+            const input = {
+                fullname: document.getElementById('userFullname').value,
+                email: document.getElementById('userEmail').value,
+                password: document.getElementById('userPassword').value,
+                phone: document.getElementById('userPhone').value
+            };
+            if (!id || (!input.fullname && !input.email && !input.password && !input.phone)) {
+                document.getElementById('errorMessage').textContent = 'Please enter User ID and at least one field to update';
+                return;
+            }
+            const query = `
+                mutation($id: ID!, $input: UserInput!) {
+                    updateUser(id: $id, input: $input) {
+                        id
+                        fullname
+                    }
+                }
+            `;
+            const data = await sendGraphQLRequest(query, { id, input });
+            if (data) {
+                alert(`User updated: ${data.updateUser.fullname}`);
+                document.getElementById('userForm').reset();
+                document.getElementById('userId').value = '';
+            }
+        }
+
+        async function deleteUser() {
+            const id = document.getElementById('userId').value;
+            if (!id) {
+                document.getElementById('errorMessage').textContent = 'Please enter User ID';
+                return;
+            }
+            const query = `
+                mutation($id: ID!) {
+                    deleteUser(id: $id)
+                }
+            `;
+            const data = await sendGraphQLRequest(query, { id });
+            if (data) {
+                alert(`User deleted: ${id}`);
+                document.getElementById('userId').value = '';
+            }
+        }
+
+        async function createProduct() {
+            const input = {
+                title: document.getElementById('productTitle').value,
+                quantity: parseInt(document.getElementById('productQuantity').value),
+                desc: document.getElementById('productDesc').value,
+                price: parseFloat(document.getElementById('productPrice').value),
+                userId: parseInt(document.getElementById('productUserId').value),
+                categoryIds: document.getElementById('productCategoryIds').value
+                    .split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id))
+            };
+            if (!input.title || isNaN(input.quantity) || !input.desc || isNaN(input.price) || isNaN(input.userId)) {
+                document.getElementById('errorMessage').textContent = 'Please fill all required product fields';
+                return;
+            }
+            const query = `
+                mutation($input: ProductInput!) {
+                    createProduct(input: $input) {
+                        id
+                        title
+                    }
+                }
+            `;
+            const data = await sendGraphQLRequest(query, { input });
+            if (data) {
+                alert(`Product created: ${data.createProduct.title}`);
+                document.getElementById('productForm').reset();
+                displayAllProductsSorted(); // Refresh product list
+            }
+        }
+
+        async function updateProduct() {
+            const id = document.getElementById('productId').value;
+            const input = {
+                title: document.getElementById('productTitle').value,
+                quantity: parseInt(document.getElementById('productQuantity').value),
+                desc: document.getElementById('productDesc').value,
+                price: parseFloat(document.getElementById('productPrice').value),
+                userId: parseInt(document.getElementById('productUserId').value),
+                categoryIds: document.getElementById('productCategoryIds').value
+                    .split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id))
+            };
+            if (!id || (!input.title && isNaN(input.quantity) && !input.desc && isNaN(input.price) && isNaN(input.userId) && !input.categoryIds.length)) {
+                document.getElementById('errorMessage').textContent = 'Please enter Product ID and at least one field to update';
+                return;
+            }
+            const query = `
+                mutation($id: ID!, $input: ProductInput!) {
+                    updateProduct(id: $id, input: $input) {
+                        id
+                        title
+                    }
+                }
+            `;
+            const data = await sendGraphQLRequest(query, { id, input });
+            if (data) {
+                alert(`Product updated: ${data.updateProduct.title}`);
+                document.getElementById('productForm').reset();
+                document.getElementById('productId').value = '';
+                displayAllProductsSorted(); // Refresh product list
+            }
+        }
+
+        async function deleteProduct() {
+            const id = document.getElementById('productId').value;
+            if (!id) {
+                document.getElementById('errorMessage').textContent = 'Please enter Product ID';
+                return;
+            }
+            const query = `
+                mutation($id: ID!) {
+                    deleteProduct(id: $id)
+                }
+            `;
+            const data = await sendGraphQLRequest(query, { id });
+            if (data) {
+                alert(`Product deleted: ${id}`);
+                document.getElementById('productId').value = '';
+                displayAllProductsSorted(); // Refresh product list
+            }
+        }
+
+        async function createCategory() {
+            const input = {
+                name: document.getElementById('categoryName').value,
+                images: document.getElementById('categoryImages').value
+                    .split(',').map(img => img.trim()).filter(img => img)
+            };
+            if (!input.name) {
+                document.getElementById('errorMessage').textContent = 'Please enter category name';
+                return;
+            }
+            const query = `
+                mutation($input: CategoryInput!) {
+                    createCategory(input: $input) {
+                        id
+                        name
+                    }
+                }
+            `;
+            const data = await sendGraphQLRequest(query, { input });
+            if (data) {
+                alert(`Category created: ${data.createCategory.name}`);
+                document.getElementById('categoryForm').reset();
+            }
+        }
+
+        async function updateCategory() {
+            const id = document.getElementById('categoryIdUpdate').value;
+            const input = {
+                name: document.getElementById('categoryName').value,
+                images: document.getElementById('categoryImages').value
+                    .split(',').map(img => img.trim()).filter(img => img)
+            };
+            if (!id || (!input.name && !input.images.length)) {
+                document.getElementById('errorMessage').textContent = 'Please enter Category ID and at least one field to update';
+                return;
+            }
+            const query = `
+                mutation($id: ID!, $input: CategoryInput!) {
+                    updateCategory(id: $id, input: $input) {
+                        id
+                        name
+                    }
+                }
+            `;
+            const data = await sendGraphQLRequest(query, { id, input });
+            if (data) {
+                alert(`Category updated: ${data.updateCategory.name}`);
+                document.getElementById('categoryForm').reset();
+                document.getElementById('categoryIdUpdate').value = '';
+            }
+        }
+
+        async function deleteCategory() {
+            const id = document.getElementById('categoryIdUpdate').value;
+            if (!id) {
+                document.getElementById('errorMessage').textContent = 'Please enter Category ID';
+                return;
+            }
+            const query = `
+                mutation($id: ID!) {
+                    deleteCategory(id: $id)
+                }
+            `;
+            const data = await sendGraphQLRequest(query, { id });
+            if (data) {
+                alert(`Category deleted: ${id}`);
+                document.getElementById('categoryIdUpdate').value = '';
+            }
+        }
+
+        function renderResults(items, elementId) {
+            const list = document.getElementById(elementId);
+            list.innerHTML = '';
+            if (!items || items.length === 0) {
+                list.innerHTML = '<li>No products found</li>';
+                return;
+            }
+            items.forEach(item => {
+                const li = document.createElement('li');
+                const categories = item.categories ? item.categories.map(c => c.name).join(', ') : 'None';
+                const user = item.user ? item.user.fullname : 'Unknown';
+                li.innerHTML = `
+                    <strong>${item.title}</strong> (ID: ${item.id})<br>
+                    Price: $${item.price.toFixed(2)} | Quantity: ${item.quantity}<br>
+                    Description: ${item.desc}<br>
+                    User: ${user} | Categories: ${categories}
+                `;
+                list.appendChild(li);
+            });
+        }
+    </script>
+</head>
+<body>
+    <h1>GraphQL Product Management</h1>
+    <div class="section">
+        <h2>Fetch Products</h2>
+        <button onclick="displayAllProductsSorted()">All Products (Sorted by Price: Low to High)</button>
+        <input type="number" id="categoryId" placeholder="Category ID">
+        <button onclick="displayProductsByCategory()">Products by Category</button>
+    </div>
+
+    <div class="section">
+        <h2>Create/Update User</h2>
+        <form id="userForm">
+            <input type="text" id="userFullname" placeholder="Fullname">
+            <input type="email" id="userEmail" placeholder="Email">
+            <input type="password" id="userPassword" placeholder="Password">
+            <input type="text" id="userPhone" placeholder="Phone">
+            <button type="button" onclick="createUser()">Create User</button>
+        </form>
+        <input type="number" id="userId" placeholder="User ID">
+        <button onclick="updateUser()">Update User</button>
+        <button class="delete" onclick="deleteUser()">Delete User</button>
+    </div>
+
+    <div class="section">
+        <h2>Create/Update Product</h2>
+        <form id="productForm">
+            <input type="text" id="productTitle" placeholder="Title">
+            <input type="number" id="productQuantity" placeholder="Quantity">
+            <input type="text" id="productDesc" placeholder="Description">
+            <input type="number" id="productPrice" placeholder="Price" step="0.01">
+            <input type="number" id="productUserId" placeholder="User ID">
+            <input type="text" id="productCategoryIds" placeholder="Category IDs (comma-separated)">
+            <button type="button" onclick="createProduct()">Create Product</button>
+        </form>
+        <input type="number" id="productId" placeholder="Product ID">
+        <button onclick="updateProduct()">Update Product</button>
+        <button class="delete" onclick="deleteProduct()">Delete Product</button>
+    </div>
+
+    <div class="section">
+        <h2>Create/Update Category</h2>
+        <form id="categoryForm">
+            <input type="text" id="categoryName" placeholder="Name">
+            <input type="text" id="categoryImages" placeholder="Images (comma-separated)">
+            <button type="button" onclick="createCategory()">Create Category</button>
+        </form>
+        <input type="number" id="categoryIdUpdate" placeholder="Category ID">
+        <button onclick="updateCategory()">Update Category</button>
+        <button class="delete" onclick="deleteCategory()">Delete Category</button>
+    </div>
+
+    <div class="section">
+        <h2 id="resultTitle">Products</h2>
+        <p id="errorMessage" class="error"></p>
+        <ul id="productsList"></ul>
+    </div>
+</body>
+</html>
