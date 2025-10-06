@@ -5,6 +5,8 @@ import vn.iotstart.service.ProductService;
 import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Optional;
+
+import vn.iotstart.dto.ProductDTO;
 import vn.iotstart.entity.Category;
 import vn.iotstart.entity.User;
 import vn.iotstart.input.ProductInput;
@@ -97,4 +99,18 @@ public class ProductServiceImpl implements ProductService {
         Optional<Category> category = categoryRepository.findById(categoryId);
         return new ArrayList<>(category.map(Category::getProducts).orElse(Set.of()));
     }
+    @Override
+    public Product create(ProductDTO productDTO) {
+        Product product = new Product();
+        product.setTitle(productDTO.getTitle());   
+        product.setPrice(productDTO.getPrice());
+        product.setDesc(productDTO.getDesc());    
+        if (productDTO.getUserId() != null) {
+            userRepository.findById(productDTO.getUserId())
+                    .ifPresent(product::setUser);
+        }
+
+        return productRepository.save(product);
+    }
+
 }

@@ -1,10 +1,15 @@
 package vn.iotstart.service.impl;
+import vn.iotstart.dto.CategoryDTO;
 import vn.iotstart.entity.Category;
 import vn.iotstart.repository.CategoryRepository;
 import vn.iotstart.service.CategoryService;
 import org.springframework.stereotype.Service;
+
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+
 import vn.iotstart.input.CategoryInput;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -13,7 +18,6 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Autowired
     private CategoryRepository categoryRepository;
-
     @Override
     public Category createCategory(CategoryInput input) {
         Category category = new Category();
@@ -48,5 +52,23 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     public Optional<Category> findCategoryById(Long id) {
         return categoryRepository.findById(id);
+    }
+    @Override
+    public Category create(CategoryDTO dto) {
+        Category category = new Category();
+        category.setName(dto.getName());
+
+        // 🔹 Nếu Category.images là Set<String>:
+        Set<String> imageSet = new HashSet<>();
+        if (dto.getImages() != null && !dto.getImages().isBlank()) {
+            // Ví dụ: "a.jpg,b.jpg,c.jpg"
+            String[] arr = dto.getImages().split(",");
+            for (String img : arr) {
+                imageSet.add(img.trim());
+            }
+        }
+        category.setImages(imageSet);
+
+        return categoryRepository.save(category);
     }
 }
