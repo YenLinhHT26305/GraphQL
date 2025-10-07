@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Product Management</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <style>
+        body { background-color: #f8f9fa; }
+        h1 { margin: 20px 0; }
+        .card { margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1 class="text-center text-primary">Product Management</h1>
+
+    <!-- User Management -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-secondary text-white">👤 User Management</div>
+        <div class="card-body">
+            <form th:action="@{/users}" th:object="${userInput}" method="post" class="row g-2">
+                <div class="col-md-3"><input type="text" th:field="*{fullname}" class="form-control" placeholder="Fullname"></div>
+                <div class="col-md-3"><input type="email" th:field="*{email}" class="form-control" placeholder="Email"></div>
+                <div class="col-md-3"><input type="password" th:field="*{password}" class="form-control" placeholder="Password"></div>
+                <div class="col-md-3"><input type="text" th:field="*{phone}" class="form-control" placeholder="Phone"></div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-success">Create User</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Category Management -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-info text-white">🏷️ Category Management</div>
+        <div class="card-body">
+            <form th:action="@{/categories}" th:object="${categoryInput}" method="post" class="row g-2">
+                <div class="col-md-4"><input type="text" th:field="*{name}" class="form-control" placeholder="Name"></div>
+                <div class="col-md-8"><input type="text" th:field="*{images}" class="form-control" placeholder="Images (comma-separated)"></div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-success">Create Category</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Product Management -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-success text-white">🛒 Product Management</div>
+        <div class="card-body">
+            <form th:action="@{/products}" th:object="${productInput}" method="post" class="row g-2">
+                <div class="col-md-3"><input type="text" th:field="*{title}" class="form-control" placeholder="Title"></div>
+                <div class="col-md-2"><input type="number" th:field="*{quantity}" class="form-control" placeholder="Quantity"></div>
+                <div class="col-md-3"><input type="text" th:field="*{desc}" class="form-control" placeholder="Description"></div>
+                <div class="col-md-2"><input type="number" step="0.01" th:field="*{price}" class="form-control" placeholder="Price"></div>
+                <div class="col-md-2"><input type="number" th:field="*{userId}" class="form-control" placeholder="User ID"></div>
+                <div class="col-md-6"><input type="text" th:field="*{categoryIds}" class="form-control" placeholder="Category IDs (comma-separated)"></div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-success">Create Product</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Products List -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-dark text-white">
+            <h5 class="mb-0">📦 All Products</h5>
+        </div>
+        <div class="card-body">
+            <ul class="list-group">
+                <li class="list-group-item" th:each="p : ${products}">
+                    <b th:text="${p.title}">Product title</b> - 
+                    <span th:text="${p.price}">0</span> ₫ |
+                    <i th:text="${p.desc}">description</i>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+</body>
+</html>
